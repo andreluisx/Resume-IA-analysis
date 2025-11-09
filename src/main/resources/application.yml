@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: Jwt_Template
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+  datasource:
+    url: ${URL_DATABASE}
+    username: ${USERNAME_DATABASE}
+    password: ${PASSWORD_DATABASE}
+    driver-class-name: ${DRIVER_CLASS_NAME}
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+
+  flyway:
+    enabled: true
+
+jwt:
+  secret: ${SECRET_KEY:default_secret}
