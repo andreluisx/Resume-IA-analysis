@@ -1,5 +1,6 @@
 package dev.andre.ResumeAiAnalysis.Vacancy.Mapper;
 
+import dev.andre.ResumeAiAnalysis.ImplementationAi.Responses.VacancyToAi;
 import dev.andre.ResumeAiAnalysis.Vacancy.Dtos.UserVacancyRelationDto;
 import dev.andre.ResumeAiAnalysis.Vacancy.Dtos.VacancyRequestDto;
 import dev.andre.ResumeAiAnalysis.Vacancy.Dtos.VacancyResponseDto;
@@ -31,6 +32,15 @@ public class VacancyMapper {
                 .approvals(entity.getApprovals())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .build();
+    }
+
+    public VacancyToAi toVacancyToAi(VacancyEntity vacancyEntity) {
+        return VacancyToAi.builder()
+                .title(vacancyEntity.getTitle())
+                .description(vacancyEntity.getDescription())
+                .essential(vacancyEntity.getEssential())
+                .differential(vacancyEntity.getDifferential())
                 .build();
     }
 

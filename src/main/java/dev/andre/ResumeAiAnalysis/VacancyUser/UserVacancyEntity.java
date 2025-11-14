@@ -1,5 +1,6 @@
 package dev.andre.ResumeAiAnalysis.VacancyUser;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import dev.andre.ResumeAiAnalysis.Application.ApplicationEntity;
 import dev.andre.ResumeAiAnalysis.Enums.ApplicationStatus;
 import dev.andre.ResumeAiAnalysis.Enums.VacancyRole;
@@ -49,6 +50,7 @@ public class UserVacancyEntity {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    @JsonManagedReference
     @OneToOne(mappedBy = "userVacancy", cascade = CascadeType.ALL, orphanRemoval = true)
     private ApplicationEntity applicationResume;
 

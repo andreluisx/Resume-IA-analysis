@@ -1,5 +1,6 @@
 package dev.andre.ResumeAiAnalysis.Vacancy;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import dev.andre.ResumeAiAnalysis.Application.ApplicationEntity;
 import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyEntity;
 import jakarta.persistence.*;
@@ -53,6 +54,7 @@ public class VacancyEntity {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    @JsonManagedReference
     @OneToMany(mappedBy = "vacancy", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserVacancyEntity> userVacancies = new ArrayList<>();
 

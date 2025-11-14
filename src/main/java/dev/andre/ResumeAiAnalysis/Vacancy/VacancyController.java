@@ -4,6 +4,9 @@ import dev.andre.ResumeAiAnalysis.Application.ApplicationEntity;
 import dev.andre.ResumeAiAnalysis.Application.ApplicationService;
 import dev.andre.ResumeAiAnalysis.Enums.ApplicationStatus;
 import dev.andre.ResumeAiAnalysis.Enums.VacancyRole;
+import dev.andre.ResumeAiAnalysis.ImplementationAi.AIEntity;
+import dev.andre.ResumeAiAnalysis.ImplementationAi.AiRepository;
+import dev.andre.ResumeAiAnalysis.ImplementationAi.AiService;
 import dev.andre.ResumeAiAnalysis.User.UserEntity;
 import dev.andre.ResumeAiAnalysis.User.UserService;
 import dev.andre.ResumeAiAnalysis.Vacancy.Dtos.UserVacancyRelationDto;
@@ -38,12 +41,16 @@ public class VacancyController {
     final private UserVacancyService userVacancyService;
     final private UserService userService;
     final private ApplicationService applicationService;
+    final private AiService implementationAiService;
+    final private AiRepository aiRepository;
 
-    public VacancyController(VacancyService vacancyService, UserService userService, UserVacancyService userVacancyService,  ApplicationService applicationService) {
+    public VacancyController(AiService implementationAiService, VacancyService vacancyService, UserService userService, UserVacancyService userVacancyService, ApplicationService applicationService, AiRepository aiRepository) {
         this.vacancyService = vacancyService;
         this.userService = userService;
         this.userVacancyService = userVacancyService;
         this.applicationService = applicationService;
+        this.implementationAiService = implementationAiService;
+        this.aiRepository = aiRepository;
     }
 
     // Criar Vaga
@@ -105,7 +112,7 @@ public class VacancyController {
         List<UserVacancyEntity> userVacancies = userVacancyService.findByUser(user);
 
         List<UserVacancyRelationDto> RelationUserVacancy = userVacancies.stream()
-                .map(vacancy-> VacancyMapper.toRelationResponse(vacancy)).toList();
+                .map(vacancy -> VacancyMapper.toRelationResponse(vacancy)).toList();
 
         return ResponseEntity.ok(RelationUserVacancy);
     }
@@ -122,67 +129,97 @@ public class VacancyController {
         return ResponseEntity.ok(vacancyById.map(VacancyMapper::toVacancyResponse).orElse(null));
     }
 
-    // Aplicar a Vaga
+    // Aplicar a vaga
     @PostMapping("/application/{vacancyId}")
-    public ResponseEntity<VacancyResponseDto> applicationToVacancy(
+    public ResponseEntity<?> applyToVacancy(
             @PathVariable Long vacancyId,
             Authentication authentication,
             @RequestParam("file") MultipartFile file) {
 
+        // ==== 1. Autenticação ====
         Optional<UserEntity> userOpt = userService.getUser(authentication);
-        if (userOpt.isEmpty()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Usuário não autenticado");
+        }
         UserEntity user = userOpt.get();
 
-        if (file == null || file.isEmpty()) return ResponseEntity.badRequest().build();
-
-        // validar tamanho e tipo
-        if (file.getSize() > 5 * 1024 * 1024) { // 5 MB
-            return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(null);
-        }
-        String ct = file.getContentType();
-        // permitir apenas pdf
-        if (!"application/pdf".equals(ct)) {
-            return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).build();
+        // ==== 2. Validação do arquivo ====
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body("Arquivo não pode estar vazio");
         }
 
+        if (!"application/pdf".equals(file.getContentType())) {
+            return ResponseEntity.badRequest().body("Apenas arquivos PDF são aceitos");
+        }
+
+        if (file.getSize() > 5 * 1024 * 1024) { // 5MB
+            return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                    .body("Arquivo excede o limite de 5MB");
+        }
+
+        // ==== 3. Validação da vaga ====
         Optional<VacancyEntity> vacancyOpt = vacancyService.getVacancyById(vacancyId);
-        if (vacancyOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        if (vacancyOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Vaga não encontrada");
+        }
         VacancyEntity vacancy = vacancyOpt.get();
 
-        boolean alreadyLinked = userVacancyService.existUserVacancyRelation(user, vacancy);
-        if (alreadyLinked) return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        // ==== 4. Verifica se já está aplicada ====
+        if (userVacancyService.existUserVacancyRelation(user, vacancy)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Usuário já aplicou para esta vaga");
+        }
 
-        // 1) SALVAR O ARQUIVO NO DISCO (safe)
-        String uploadDir = "uploads/applications/";  // ou carregue de config
+        // ==== 5. Processar o arquivo (AI) ====
+        try {
+            AIEntity aiEntity = implementationAiService.gerarTextoComPdf(file, vacancy);
+            aiRepository.save(aiEntity);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro ao processar arquivo com IA: " + e.getMessage());
+        }
+
+        // ==== 6. Salvar arquivo fisicamente ====
+        String uploadDir = "uploads/applications/";
+        String savedName;
+        Path target;
+
         try {
             Files.createDirectories(Paths.get(uploadDir));
 
             String original = Paths.get(file.getOriginalFilename()).getFileName().toString();
-            String ext = "";
-            int i = original.lastIndexOf('.');
-            if (i > -1) ext = original.substring(i);
+            String ext = original.contains(".")
+                    ? original.substring(original.lastIndexOf('.'))
+                    : "";
 
-            String savedName = UUID.randomUUID().toString() + ext;
-            Path target = Paths.get(uploadDir).resolve(savedName);
+            savedName = UUID.randomUUID().toString() + ext;
+            target = Paths.get(uploadDir).resolve(savedName);
 
-            // stream copy (não carrega em memória)
             try (InputStream in = file.getInputStream()) {
                 Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
             }
 
-            // 2) criar relação user_vacancy
+        } catch (IOException e) {
+            System.err.println("Erro ao salvar arquivo: " + e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro ao salvar arquivo");
+        }
+
+        // ==== 7. Criar relação User-Vacancy ====
+        try {
             UserVacancyEntity userVacancy = UserVacancyEntity.builder()
                     .vacancy(vacancy)
                     .user(user)
                     .role(VacancyRole.APPLICANT)
                     .status(ApplicationStatus.PENDING)
                     .build();
-
             userVacancyService.save(userVacancy);
 
-            // 3) salvar metadados do arquivo (attachment)
+            // ==== 8. Salvar metadados do arquivo ====
             ApplicationEntity attachment = ApplicationEntity.builder()
-                    .originalName(original)
+                    .originalName(file.getOriginalFilename())
                     .filename(savedName)
                     .contentType(file.getContentType())
                     .size(file.getSize())
@@ -191,21 +228,21 @@ public class VacancyController {
                     .build();
             applicationService.save(attachment);
 
-            // 4) incrementar contador de forma atômica
+            // ==== 9. Incrementar contador ====
             vacancyService.incrementApplications(vacancyId);
 
-            // 5) recarregar vaga e retornar
+            // ==== 10. Retornar vaga atualizada ====
             VacancyEntity updatedVacancy = vacancyService.getVacancyById(vacancyId).get();
+
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(VacancyMapper.toVacancyResponse(updatedVacancy));
 
-        } catch (IOException e) {
-            // logar e retornar erro 500
-            System.out.println("Erro ao salvar arquivo: " + e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        } catch (Exception e) {
+            System.err.println("Erro ao registrar aplicação: " + e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro ao registrar aplicação");
         }
     }
-
 
 
     // Edita Vaga de Emprego
