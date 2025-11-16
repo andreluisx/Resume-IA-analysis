@@ -3,6 +3,8 @@ package dev.andre.ResumeAiAnalysis.ImplementationAi;
 import dev.andre.ResumeAiAnalysis.Enums.VacancyRole;
 import dev.andre.ResumeAiAnalysis.User.UserEntity;
 import dev.andre.ResumeAiAnalysis.User.UserService;
+import dev.andre.ResumeAiAnalysis.Vacancy.VacancyEntity;
+import dev.andre.ResumeAiAnalysis.Vacancy.VacancyService;
 import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyEntity;
 import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyService;
 import org.springframework.http.HttpStatus;
@@ -20,16 +22,18 @@ public class AiController {
 
     private AiService implementationAiService;
     private UserService userService;
+    private VacancyService vacancyService;
     private UserVacancyService userVacancyService;
 
-    public AiController(AiService implementationAiService,  UserService userService,  UserVacancyService userVacancyService) {
+    public AiController(AiService implementationAiService,  UserService userService,  UserVacancyService userVacancyService, VacancyService vacancyService) {
         this.implementationAiService = implementationAiService;
         this.userService = userService;
         this.userVacancyService = userVacancyService;
+        this.vacancyService = vacancyService;
     }
 
     @GetMapping("/{AiResponseId}")
-    public ResponseEntity<?> getOneAiEntity(@PathVariable Long AiResponseId,  Authentication authentication){
+    public ResponseEntity<?> getOneAiEntity(@PathVariable Long AiResponseId, Authentication authentication){
 
         // ==== 1. Autenticação ====
         Optional<UserEntity> userOpt = userService.getUser(authentication);
@@ -39,19 +43,11 @@ public class AiController {
         }
         UserEntity user = userOpt.get();
 
-        Optional<UserVacancyEntity> userVacancyRelation = userVacancyService.findByUserAndVacancy(user, vacancyById.get());
-
-        if (userVacancyRelation.isEmpty() || userVacancyRelation.get().getRole() == VacancyRole.APPLICANT) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
         Optional<AIEntity> AiResponse = implementationAiService.getOneById(AiResponseId);
-
-
 
         if(AiResponse.isEmpty()){
             return  new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
-        return ResponseEntity.ok(AiResponse);
+        return ResponseEntity.ok(AiResponse.get());
     }
 }

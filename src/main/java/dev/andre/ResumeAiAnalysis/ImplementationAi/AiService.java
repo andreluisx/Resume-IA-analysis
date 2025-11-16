@@ -10,6 +10,7 @@ import dev.andre.ResumeAiAnalysis.ImplementationAi.Exceptions.AiProcessingExcept
 import dev.andre.ResumeAiAnalysis.ImplementationAi.Exceptions.PdfProcessingException;
 import dev.andre.ResumeAiAnalysis.Vacancy.Mapper.VacancyMapper;
 import dev.andre.ResumeAiAnalysis.Vacancy.VacancyEntity;
+import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,7 +38,7 @@ public class AiService {
      * @param pdfFile Arquivo PDF do currículo
      * @return AIEntity com a análise
      */
-    public AIEntity gerarTextoComPdf(MultipartFile pdfFile, VacancyEntity vacancy) {
+    public AIEntity gerarTextoComPdf(MultipartFile pdfFile, VacancyEntity vacancy, UserVacancyEntity userVacancyEntity) {
         try {
             // ====== 1. Leitura do PDF ======
             byte[] fileBytes;
@@ -102,6 +103,7 @@ public class AiService {
 
             // ====== 7. Converter para entidade ======
             return AIEntity.builder()
+                    .userVacancy(userVacancyEntity)
                     .application_description(dto.getApplication_description())
                     .improvements_to_this_vacancy(dto.getImprovements_to_this_vacancy())
                     .essential_matches(dto.getEssential_matches())

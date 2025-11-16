@@ -172,14 +172,7 @@ public class VacancyController {
                     .body("Usuário já aplicou para esta vaga");
         }
 
-        // ==== 5. Processar o arquivo (AI) ====
-        try {
-            AIEntity aiEntity = implementationAiService.gerarTextoComPdf(file, vacancy);
-            aiRepository.save(aiEntity);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erro ao processar arquivo com IA: " + e.getMessage());
-        }
+
 
         // ==== 6. Salvar arquivo fisicamente ====
         String uploadDir = "uploads/applications/";
@@ -216,6 +209,15 @@ public class VacancyController {
                     .status(ApplicationStatus.PENDING)
                     .build();
             userVacancyService.save(userVacancy);
+
+            // ==== 5. Processar o arquivo (AI) ====
+            try {
+                AIEntity aiEntity = implementationAiService.gerarTextoComPdf(file, vacancy, userVacancy);
+                aiRepository.save(aiEntity);
+            } catch (Exception e) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Erro ao processar arquivo com IA: " + e.getMessage());
+            }
 
             // ==== 8. Salvar metadados do arquivo ====
             ApplicationEntity attachment = ApplicationEntity.builder()
