@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Objects;
 import java.util.Optional;
 
 @RestController
@@ -25,7 +26,7 @@ public class AiController {
     private VacancyService vacancyService;
     private UserVacancyService userVacancyService;
 
-    public AiController(AiService implementationAiService,  UserService userService,  UserVacancyService userVacancyService, VacancyService vacancyService) {
+    public AiController(AiService implementationAiService, UserService userService, UserVacancyService userVacancyService, VacancyService vacancyService) {
         this.implementationAiService = implementationAiService;
         this.userService = userService;
         this.userVacancyService = userVacancyService;
@@ -33,7 +34,7 @@ public class AiController {
     }
 
     @GetMapping("/{AiResponseId}")
-    public ResponseEntity<?> getOneAiEntity(@PathVariable Long AiResponseId, Authentication authentication){
+    public ResponseEntity<?> getOneAiEntity(@PathVariable Long AiResponseId, Authentication authentication) {
 
         // ==== 1. Autenticação ====
         Optional<UserEntity> userOpt = userService.getUser(authentication);
@@ -45,9 +46,33 @@ public class AiController {
 
         Optional<AIEntity> AiResponse = implementationAiService.getOneById(AiResponseId);
 
-        if(AiResponse.isEmpty()){
-            return  new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        // verifica se existe a analise da ia
+        if (AiResponse.isEmpty()) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+
+        Optional<UserVacancyEntity> userVacancyOpt = userVacancyService.findById(AiResponse.get().getUserVacancy().getId());
+
+        //verifica se existe a relação user vacancy da IA entity
+        if (userVacancyOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Analise da vaga não existe");
+        }
+
+        Optional<UserVacancyEntity> userVacancyRelationOpt = userVacancyService.findByUserAndVacancy(user, userVacancyOpt.get().getVacancy());
+
+        if (userVacancyRelationOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Você não tem relação com essa vaga");
+        }
+
+        System.out.println("USUARIO LOGADO: " + user.getId() + "\nUSUARIO DA RELAÇÃO: " + userVacancyOpt.get().getUser().getId());
+        System.out.println((user.getId().equals(userVacancyOpt.get().getUser().getId()) || userVacancyRelationOpt.get().getRole().equals(VacancyRole.RECRUITER)));
+
+        if (!(user.getId().equals(userVacancyOpt.get().getUser().getId()) || userVacancyRelationOpt.get().getRole().equals(VacancyRole.RECRUITER))) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Você não tem autorização para ver isso");
+        }
+
         return ResponseEntity.ok(AiResponse.get());
     }
 }

@@ -15,6 +15,10 @@ public class UserVacancyService {
         this.userVacancyRepository = userVacancyRepository;
     }
 
+    public Optional<UserVacancyEntity> findById(Long userVacancyId){
+        return userVacancyRepository.findById(userVacancyId);
+    }
+
     public UserVacancyEntity save(UserVacancyEntity entity) {
         return userVacancyRepository.save(entity);
     }
