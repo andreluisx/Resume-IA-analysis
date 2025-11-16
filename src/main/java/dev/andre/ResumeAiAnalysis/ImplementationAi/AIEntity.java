@@ -1,6 +1,9 @@
 package dev.andre.ResumeAiAnalysis.ImplementationAi;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import dev.andre.ResumeAiAnalysis.ImplementationAi.Enums.Status;
+import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyEntity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -50,5 +53,10 @@ public class AIEntity {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    @JsonBackReference
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_vacancy_id", nullable = false, unique = true)
+    private UserVacancyEntity userVacancy;
 
 }

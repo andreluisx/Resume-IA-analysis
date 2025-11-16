@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import dev.andre.ResumeAiAnalysis.Application.ApplicationEntity;
 import dev.andre.ResumeAiAnalysis.Enums.ApplicationStatus;
 import dev.andre.ResumeAiAnalysis.Enums.VacancyRole;
+import dev.andre.ResumeAiAnalysis.ImplementationAi.AIEntity;
 import dev.andre.ResumeAiAnalysis.User.UserEntity;
 import dev.andre.ResumeAiAnalysis.Vacancy.VacancyEntity;
 import jakarta.persistence.*;
@@ -53,5 +54,9 @@ public class UserVacancyEntity {
     @JsonManagedReference
     @OneToOne(mappedBy = "userVacancy", cascade = CascadeType.ALL, orphanRemoval = true)
     private ApplicationEntity applicationResume;
+
+    @JsonManagedReference
+    @OneToOne(mappedBy = "userVacancy", cascade = CascadeType.ALL, orphanRemoval = true)
+    private AIEntity aiResponse;
 
 }
