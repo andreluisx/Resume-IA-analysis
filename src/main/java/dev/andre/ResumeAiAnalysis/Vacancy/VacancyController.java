@@ -136,7 +136,7 @@ public class VacancyController {
             Authentication authentication,
             @RequestParam("file") MultipartFile file) {
 
-        // ==== 1. Autenticação ====
+        // ----- Autenticação -----
         Optional<UserEntity> userOpt = userService.getUser(authentication);
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -144,7 +144,7 @@ public class VacancyController {
         }
         UserEntity user = userOpt.get();
 
-        // ==== 2. Validação do arquivo ====
+        // ----- Validação do arquivo -----
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().body("Arquivo não pode estar vazio");
         }
@@ -158,7 +158,7 @@ public class VacancyController {
                     .body("Arquivo excede o limite de 5MB");
         }
 
-        // ==== 3. Validação da vaga ====
+        // ----- Validação da vaga -----
         Optional<VacancyEntity> vacancyOpt = vacancyService.getVacancyById(vacancyId);
         if (vacancyOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -166,7 +166,7 @@ public class VacancyController {
         }
         VacancyEntity vacancy = vacancyOpt.get();
 
-        // ==== 4. Verifica se já está aplicada ====
+        // ----- Verifica se já está aplicada -----
         if (userVacancyService.existUserVacancyRelation(user, vacancy)) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body("Usuário já aplicou para esta vaga");
@@ -174,7 +174,7 @@ public class VacancyController {
 
 
 
-        // ==== 6. Salvar arquivo fisicamente ====
+        // ----- Salvar arquivo fisicamente -----
         String uploadDir = "uploads/applications/";
         String savedName;
         Path target;
@@ -200,7 +200,7 @@ public class VacancyController {
                     .body("Erro ao salvar arquivo");
         }
 
-        // ==== 7. Criar relação User-Vacancy ====
+        // ----- Criar relação User-Vacancy -----
         try {
             UserVacancyEntity userVacancy = UserVacancyEntity.builder()
                     .vacancy(vacancy)
@@ -210,7 +210,7 @@ public class VacancyController {
                     .build();
             userVacancyService.save(userVacancy);
 
-            // ==== 5. Processar o arquivo (AI) ====
+            // ----- Processar o arquivo AI -----
             try {
                 AIEntity aiEntity = implementationAiService.gerarTextoComPdf(file, vacancy, userVacancy);
                 aiRepository.save(aiEntity);
@@ -219,7 +219,7 @@ public class VacancyController {
                         .body("Erro ao processar arquivo com IA: " + e.getMessage());
             }
 
-            // ==== 8. Salvar metadados do arquivo ====
+            // ----- Salvar metadados do arquivo -----
             ApplicationEntity attachment = ApplicationEntity.builder()
                     .originalName(file.getOriginalFilename())
                     .filename(savedName)
@@ -230,10 +230,10 @@ public class VacancyController {
                     .build();
             applicationService.save(attachment);
 
-            // ==== 9. Incrementar contador ====
+            // ----- Incrementar contador -----
             vacancyService.incrementApplications(vacancyId);
 
-            // ==== 10. Retornar vaga atualizada ====
+            // ----- Retornar vaga atualizada -----
             VacancyEntity updatedVacancy = vacancyService.getVacancyById(vacancyId).get();
 
             return ResponseEntity.status(HttpStatus.CREATED)
