@@ -35,5 +35,7 @@ public class UserVacancyService {
         return userVacancyRepository.findByUserAndVacancy(user, vacancy);
     }
 
-
+    public void deleteById(Long userVacancyId){
+        userVacancyRepository.deleteById(userVacancyId);
+    }
 }
