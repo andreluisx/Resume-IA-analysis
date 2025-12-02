@@ -11,7 +11,7 @@ public class ExceptionsResponse {
     private String message;
     private int status;
     private OffsetDateTime timestamp;
-    private String path; // opcional, remova se não quiser
+    private String path;
 
     public ExceptionsResponse(String message) {
         this(message, 0, OffsetDateTime.now(), null);
