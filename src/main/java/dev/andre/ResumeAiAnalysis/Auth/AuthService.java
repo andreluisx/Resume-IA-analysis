@@ -1,5 +1,6 @@
 package dev.andre.ResumeAiAnalysis.Auth;
 
+import dev.andre.ResumeAiAnalysis.Auth.Exceptions.EmailAlreadyExist;
 import dev.andre.ResumeAiAnalysis.User.UserEntity;
 import dev.andre.ResumeAiAnalysis.User.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +18,7 @@ public class AuthService implements UserDetailsService {
     private final UserRepository userRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return userRepository.findUserByEmail(username).orElseThrow(() -> new UsernameNotFoundException("Usuario ou senha inválido."));
+    public UserDetails loadUserByUsername(String user) throws UsernameNotFoundException {
+        return userRepository.findUserByEmail(user).orElseThrow(() -> new UsernameNotFoundException("Usuario ou senha inválido."));
     }
 }

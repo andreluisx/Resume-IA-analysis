@@ -1,5 +1,6 @@
 package dev.andre.ResumeAiAnalysis.User;
 
+import dev.andre.ResumeAiAnalysis.Auth.Exceptions.EmailAlreadyExist;
 import dev.andre.ResumeAiAnalysis.Config.JWTUserData;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,6 +20,12 @@ public class UserService {
     }
 
     public UserEntity RegisterUser(UserEntity user) {
+        Optional<UserEntity> userByEmail = userRepository.findUserByEmail(user.getEmail());
+
+        if(userByEmail.isPresent()) {
+            throw new EmailAlreadyExist("Este email já está sendo usado");
+        }
+
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);

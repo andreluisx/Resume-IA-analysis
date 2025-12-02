@@ -18,6 +18,11 @@ spring:
   flyway:
     enabled: true
 
+
+  mvc:
+    problemdetails:
+      enabled: false
+
 jwt:
   secret: ${SECRET_KEY:default_secret}
 
@@ -25,3 +30,16 @@ google:
   api:
     GEMINI_API_KEY: ${GOOGLE_API_KEY}
     key: ${GOOGLE_API_KEY}
+
+logging:
+  level:
+    org:
+      springframework:
+        web: DEBUG
+        validation: DEBUG
+        http:
+          converter:
+            json: DEBUG
+      hibernate:
+        validator: DEBUG
+
