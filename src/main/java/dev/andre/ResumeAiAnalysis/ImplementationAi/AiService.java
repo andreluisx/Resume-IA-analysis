@@ -5,13 +5,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.Client;
 import com.google.genai.types.*;
 
+import dev.andre.ResumeAiAnalysis.Auth.Exceptions.UnauthenticatedUser;
+import dev.andre.ResumeAiAnalysis.Enums.VacancyRole;
+import dev.andre.ResumeAiAnalysis.ExceptionHandler.NotFoundException;
 import dev.andre.ResumeAiAnalysis.ImplementationAi.Enums.Status;
 import dev.andre.ResumeAiAnalysis.ImplementationAi.Exceptions.AiProcessingException;
 import dev.andre.ResumeAiAnalysis.ImplementationAi.Exceptions.PdfProcessingException;
+import dev.andre.ResumeAiAnalysis.User.UserEntity;
+import dev.andre.ResumeAiAnalysis.User.UserService;
+import dev.andre.ResumeAiAnalysis.Vacancy.Exceptions.UserCannotAccessOrDoThat;
 import dev.andre.ResumeAiAnalysis.Vacancy.Mapper.VacancyMapper;
 import dev.andre.ResumeAiAnalysis.Vacancy.VacancyEntity;
 import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyEntity;
+import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -24,9 +32,13 @@ import java.util.Optional;
 public class AiService {
 
     final private AiRepository aiRepository;
+    final private UserService userService;
+    final private UserVacancyService userVacancyService;
 
-    public AiService(AiRepository aiRepository) {
+    public AiService(AiRepository aiRepository, UserService userService, UserVacancyService userVacancyService) {
+        this.userService = userService;
         this.aiRepository = aiRepository;
+        this.userVacancyService = userVacancyService;
     }
 
     private String googleApiKey = System.getenv("GOOGLE_API_KEY");
@@ -123,8 +135,41 @@ public class AiService {
             throw new RuntimeException("Erro inesperado no processamento de IA", e);
         }
     }
-    public Optional<AIEntity> getOneById(Long id){
-        return aiRepository.findById(id);
+    public AIEntity getOneById(Long AiResponseId, Authentication authentication){
+
+        // ==== 1. Autenticação ====
+        Optional<UserEntity> userOpt = userService.getUser(authentication);
+        if (userOpt.isEmpty()) {
+            throw new UnauthenticatedUser("Usuário não autenticado");
+        }
+        UserEntity user = userOpt.get();
+
+        Optional<AIEntity> AiResponse = aiRepository.findById(AiResponseId);
+
+        // verifica se existe a analise da ia
+        if (AiResponse.isEmpty()) {
+            throw new NotFoundException("Analise da IA não existe");
+        }
+
+        Optional<UserVacancyEntity> userVacancyOpt = userVacancyService.findById(AiResponse.get().getUserVacancy().getId());
+
+        //verifica se existe a relação user vacancy da IA entity
+        if (userVacancyOpt.isEmpty()) {
+            throw new NotFoundException("Analise da IA pra essa vaga não existe mais");
+        }
+
+        Optional<UserVacancyEntity> userVacancyRelationOpt = userVacancyService.findByUserAndVacancy(user, userVacancyOpt.get().getVacancy());
+
+        if (userVacancyRelationOpt.isEmpty()) {
+            throw new UserCannotAccessOrDoThat("Você não tem relação com essa vaga");
+        }
+
+        if (!(user.getId().equals(userVacancyOpt.get().getUser().getId()) || userVacancyRelationOpt.get().getRole().equals(VacancyRole.RECRUITER))) {
+            throw new UserCannotAccessOrDoThat("Você não tem autorização para ver isso");
+        }
+
+        return AiResponse.get();
+
     }
 
     public String melhoriasCurriculo(MultipartFile pdfFile) {

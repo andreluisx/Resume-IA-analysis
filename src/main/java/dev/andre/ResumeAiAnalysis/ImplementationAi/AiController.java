@@ -35,37 +35,8 @@ public class AiController {
     @GetMapping("/{AiResponseId}")
     public ResponseEntity<AIEntity> getOneAiEntity(@PathVariable Long AiResponseId, Authentication authentication) {
 
-        // ==== 1. Autenticação ====
-        Optional<UserEntity> userOpt = userService.getUser(authentication);
-        if (userOpt.isEmpty()) {
-            throw new UnauthenticatedUser("Usuário não autenticado");
-        }
-        UserEntity user = userOpt.get();
+        AIEntity oneById = implementationAiService.getOneById(AiResponseId, authentication);
 
-        Optional<AIEntity> AiResponse = implementationAiService.getOneById(AiResponseId);
-
-        // verifica se existe a analise da ia
-        if (AiResponse.isEmpty()) {
-            throw new NotFoundException("Analise da IA não existe");
-        }
-
-        Optional<UserVacancyEntity> userVacancyOpt = userVacancyService.findById(AiResponse.get().getUserVacancy().getId());
-
-        //verifica se existe a relação user vacancy da IA entity
-        if (userVacancyOpt.isEmpty()) {
-            throw new NotFoundException("Analise da IA pra essa vaga não existe mais");
-        }
-
-        Optional<UserVacancyEntity> userVacancyRelationOpt = userVacancyService.findByUserAndVacancy(user, userVacancyOpt.get().getVacancy());
-
-        if (userVacancyRelationOpt.isEmpty()) {
-            throw new UserCannotAccessOrDoThat("Você não tem relação com essa vaga");
-        }
-
-        if (!(user.getId().equals(userVacancyOpt.get().getUser().getId()) || userVacancyRelationOpt.get().getRole().equals(VacancyRole.RECRUITER))) {
-            throw new UserCannotAccessOrDoThat("Você não tem autorização para ver isso");
-        }
-
-        return ResponseEntity.ok(AiResponse.get());
+        return ResponseEntity.ok(oneById);
     }
 }
