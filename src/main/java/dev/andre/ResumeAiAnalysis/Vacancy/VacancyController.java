@@ -1,17 +1,6 @@
 package dev.andre.ResumeAiAnalysis.Vacancy;
 
-import dev.andre.ResumeAiAnalysis.Application.ApplicationEntity;
-import dev.andre.ResumeAiAnalysis.Application.ApplicationService;
-import dev.andre.ResumeAiAnalysis.Auth.Exceptions.UnauthenticatedUser;
-import dev.andre.ResumeAiAnalysis.Enums.ApplicationStatus;
-import dev.andre.ResumeAiAnalysis.Enums.VacancyRole;
-import dev.andre.ResumeAiAnalysis.ExceptionHandler.InternalServerError;
 import dev.andre.ResumeAiAnalysis.ExceptionHandler.NotFoundException;
-import dev.andre.ResumeAiAnalysis.ImplementationAi.AIEntity;
-import dev.andre.ResumeAiAnalysis.ImplementationAi.AiRepository;
-import dev.andre.ResumeAiAnalysis.ImplementationAi.AiService;
-import dev.andre.ResumeAiAnalysis.User.UserEntity;
-import dev.andre.ResumeAiAnalysis.User.UserService;
 import dev.andre.ResumeAiAnalysis.Vacancy.Dtos.UserVacancyRelationDto;
 import dev.andre.ResumeAiAnalysis.Vacancy.Dtos.VacancyRequestDto;
 import dev.andre.ResumeAiAnalysis.Vacancy.Dtos.VacancyResponseDto;
@@ -25,15 +14,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("vacancy")
@@ -41,18 +23,10 @@ public class VacancyController {
 
     final private VacancyService vacancyService;
     final private UserVacancyService userVacancyService;
-    final private UserService userService;
-    final private ApplicationService applicationService;
-    final private AiService implementationAiService;
-    final private AiRepository aiRepository;
 
-    public VacancyController(AiService implementationAiService, VacancyService vacancyService, UserService userService, UserVacancyService userVacancyService, ApplicationService applicationService, AiRepository aiRepository) {
+    public VacancyController(VacancyService vacancyService, UserVacancyService userVacancyService) {
         this.vacancyService = vacancyService;
-        this.userService = userService;
         this.userVacancyService = userVacancyService;
-        this.applicationService = applicationService;
-        this.implementationAiService = implementationAiService;
-        this.aiRepository = aiRepository;
     }
 
     // Criar Vaga

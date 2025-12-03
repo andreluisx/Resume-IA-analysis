@@ -1,6 +1,5 @@
 package dev.andre.ResumeAiAnalysis.Vacancy;
 
-
 import dev.andre.ResumeAiAnalysis.Application.ApplicationEntity;
 import dev.andre.ResumeAiAnalysis.Application.ApplicationService;
 import dev.andre.ResumeAiAnalysis.Auth.Exceptions.UnauthenticatedUser;
@@ -17,11 +16,8 @@ import dev.andre.ResumeAiAnalysis.Vacancy.Dtos.VacancyRequestDto;
 import dev.andre.ResumeAiAnalysis.Vacancy.Exceptions.*;
 import dev.andre.ResumeAiAnalysis.Vacancy.Mapper.VacancyMapper;
 import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyEntity;
-import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyRepository;
 import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyService;
 import jakarta.transaction.Transactional;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;

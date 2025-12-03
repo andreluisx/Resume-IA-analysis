@@ -4,8 +4,6 @@ package dev.andre.ResumeAiAnalysis.VacancyUser;
 import dev.andre.ResumeAiAnalysis.Auth.Exceptions.UnauthenticatedUser;
 import dev.andre.ResumeAiAnalysis.User.UserEntity;
 import dev.andre.ResumeAiAnalysis.User.UserService;
-import dev.andre.ResumeAiAnalysis.Vacancy.Dtos.UserVacancyRelationDto;
-import dev.andre.ResumeAiAnalysis.Vacancy.Mapper.VacancyMapper;
 import dev.andre.ResumeAiAnalysis.Vacancy.VacancyEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
