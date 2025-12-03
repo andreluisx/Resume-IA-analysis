@@ -14,10 +14,7 @@ import dev.andre.ResumeAiAnalysis.ImplementationAi.AiService;
 import dev.andre.ResumeAiAnalysis.User.UserEntity;
 import dev.andre.ResumeAiAnalysis.User.UserService;
 import dev.andre.ResumeAiAnalysis.Vacancy.Dtos.VacancyRequestDto;
-import dev.andre.ResumeAiAnalysis.Vacancy.Exceptions.ConflictException;
-import dev.andre.ResumeAiAnalysis.Vacancy.Exceptions.FileEmptyException;
-import dev.andre.ResumeAiAnalysis.Vacancy.Exceptions.FileTooLargeException;
-import dev.andre.ResumeAiAnalysis.Vacancy.Exceptions.InvalidFileTypeException;
+import dev.andre.ResumeAiAnalysis.Vacancy.Exceptions.*;
 import dev.andre.ResumeAiAnalysis.Vacancy.Mapper.VacancyMapper;
 import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyEntity;
 import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyRepository;
@@ -58,8 +55,34 @@ public class VacancyService {
         this.vacancyRepository = vacancyRepository;
     }
 
-    public VacancyEntity createVacancy(VacancyEntity vacancyEntity) {
-        return vacancyRepository.save(vacancyEntity);
+    public VacancyEntity createVacancy(VacancyRequestDto vacancyRequestDto, Authentication authentication) {
+
+        Optional<UserEntity> userOpt = userService.getUser(authentication);
+        if (userOpt.isEmpty()) {
+            throw new UnauthenticatedUser("Usuário não autenticado");
+        }
+
+        UserEntity user = userOpt.get();
+
+        // Cria a vaga
+        VacancyEntity vacancy = VacancyMapper.toVacancyEntity(vacancyRequestDto);
+        vacancy.setActive(true);
+
+        // Salva a vaga no banco
+        VacancyEntity savedVacancy = vacancyRepository.save(vacancy);
+
+        // Cria o vínculo entre o usuário e a vaga
+        UserVacancyEntity userVacancy = UserVacancyEntity.builder()
+                .user(user)
+                .vacancy(savedVacancy)
+                .status(ApplicationStatus.APPROVED)
+                .role(VacancyRole.RECRUITER)
+                .build();
+
+        // Salva o vínculo na tabela intermediária user_vacancies
+        userVacancyService.save(userVacancy);
+
+        return savedVacancy;
     }
 
     public List<VacancyEntity> getAllVacancies() {
@@ -74,7 +97,29 @@ public class VacancyService {
         vacancyRepository.save(vacancy);
     }
 
-    public VacancyEntity updateVacancy(VacancyEntity vacancy, VacancyRequestDto dto) {
+    public VacancyEntity updateVacancy(Long vacancyId, VacancyRequestDto dto, Authentication authentication) {
+
+        Optional<UserEntity> userOpt = userService.getUser(authentication);
+
+        if (userOpt.isEmpty()) {
+            throw new UnauthenticatedUser("Usuário não autenticado");
+        }
+        UserEntity user = userOpt.get();
+
+        Optional<VacancyEntity> vacancyById = this.getVacancyById(vacancyId);
+
+        if (vacancyById.isEmpty()) {
+            throw new NotFoundException("Vacancy não encontrada");
+        }
+
+        VacancyEntity vacancy = vacancyById.get();
+
+        Optional<UserVacancyEntity> userVacancyRelation = userVacancyService.findByUserAndVacancy(user, vacancyById.get());
+
+        if (userVacancyRelation.isEmpty() || userVacancyRelation.get().getRole() == VacancyRole.APPLICANT) {
+            throw new UserCannotAccessOrDoThat("Usuario não tem autorização para editar essa vaga");
+        }
+
         if (dto.title() != null) vacancy.setTitle(dto.title());
         if (dto.description() != null) vacancy.setDescription(dto.description());
         if (dto.essential() != null) vacancy.setEssential(dto.essential());
@@ -83,8 +128,27 @@ public class VacancyService {
         return vacancyRepository.save(vacancy);
     }
 
-    public void deleteVacancyById(Long id) {
-        vacancyRepository.deleteById(id);
+    public void deleteVacancyById(Authentication authentication, Long vacancyId) {
+        Optional<UserEntity> userOpt = userService.getUser(authentication);
+        if (userOpt.isEmpty()) {
+            throw new UnauthenticatedUser("Usuário não autenticado");
+        }
+        UserEntity user = userOpt.get();
+
+        Optional<VacancyEntity> vacancyById = this.getVacancyById(vacancyId);
+
+        if (vacancyById.isEmpty()) {
+            throw new NotFoundException("Vacancy não encontrada");
+        }
+
+        Optional<UserVacancyEntity> userAndVacancyRelation = userVacancyService.findByUserAndVacancy(user, vacancyById.get());
+
+        if (userAndVacancyRelation.isEmpty()) {
+            throw new UserCannotAccessOrDoThat("Usuario não tem autorização para excluir essa vaga");
+        }
+
+        vacancyRepository.deleteById(vacancyId);
+
     }
 
     @Transactional

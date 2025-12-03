@@ -61,32 +61,8 @@ public class VacancyController {
             @RequestBody VacancyRequestDto vacancyRequestDto,
             Authentication authentication) {
 
-        Optional<UserEntity> userOpt = userService.getUser(authentication);
-        if (userOpt.isEmpty()) {
-            throw new UnauthenticatedUser("Usuário não autenticado");
-        }
+        VacancyEntity savedVacancy = vacancyService.createVacancy(vacancyRequestDto, authentication);
 
-        UserEntity user = userOpt.get();
-
-        // Cria a vaga
-        VacancyEntity vacancy = VacancyMapper.toVacancyEntity(vacancyRequestDto);
-        vacancy.setActive(true);
-
-        // Salva a vaga no banco
-        VacancyEntity savedVacancy = vacancyService.createVacancy(vacancy);
-
-        // Cria o vínculo entre o usuário e a vaga
-        UserVacancyEntity userVacancy = UserVacancyEntity.builder()
-                .user(user)
-                .vacancy(savedVacancy)
-                .status(ApplicationStatus.APPROVED)
-                .role(VacancyRole.RECRUITER)
-                .build();
-
-        // Salva o vínculo na tabela intermediária user_vacancies
-        userVacancyService.save(userVacancy);
-
-        // Retorna a resposta
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(VacancyMapper.toVacancyResponse(savedVacancy));
@@ -103,17 +79,8 @@ public class VacancyController {
     // Busca "Minha Vagas"
     @GetMapping("/my")
     public ResponseEntity<List<UserVacancyRelationDto>> myVacancies(Authentication authentication) {
-        Optional<UserEntity> userOpt = userService.getUser(authentication);
-
-        if (userOpt.isEmpty()) {
-            throw new UnauthenticatedUser("Usuário não autenticado");
-        }
-
-        UserEntity user = userOpt.get();
-
+        List<UserVacancyEntity> userVacancies = userVacancyService.findByUser(authentication);
         //  Busca todas as relações (user_vacancies) desse usuário
-        List<UserVacancyEntity> userVacancies = userVacancyService.findByUser(user);
-
         List<UserVacancyRelationDto> RelationUserVacancy = userVacancies.stream()
                 .map(vacancy -> VacancyMapper.toRelationResponse(vacancy)).toList();
 
@@ -144,52 +111,14 @@ public class VacancyController {
     // Edita Vaga de Emprego
     @PutMapping("/{vacancyId}")
     public ResponseEntity<VacancyResponseDto> editVacancy(@PathVariable Long vacancyId, @RequestBody VacancyRequestDto VacancyDto, Authentication authentication) {
-        Optional<UserEntity> userOpt = userService.getUser(authentication);
-
-        if (userOpt.isEmpty()) {
-            throw new UnauthenticatedUser("Usuário não autenticado");
-        }
-        UserEntity user = userOpt.get();
-
-        Optional<VacancyEntity> vacancyById = vacancyService.getVacancyById(vacancyId);
-
-        if (vacancyById.isEmpty()) {
-            throw new NotFoundException("Vacancy não encontrada");
-        }
-
-        Optional<UserVacancyEntity> userVacancyRelation = userVacancyService.findByUserAndVacancy(user, vacancyById.get());
-
-        if (userVacancyRelation.isEmpty() || userVacancyRelation.get().getRole() == VacancyRole.APPLICANT) {
-            throw new UserCannotAccessOrDoThat("Usuario não tem autorização para editar essa vaga");
-        }
-
-        VacancyEntity vacancyEdited = vacancyService.updateVacancy(vacancyById.get(), VacancyDto);
-
-        return ResponseEntity.ok(VacancyMapper.toVacancyResponse(vacancyEdited));
+        VacancyEntity vacancyEditedEntity = vacancyService.updateVacancy(vacancyId, VacancyDto, authentication);
+        return ResponseEntity.ok(VacancyMapper.toVacancyResponse(vacancyEditedEntity));
     }
 
     // Deleta Vaga de Emprego
     @DeleteMapping("/{vacancyId}")
     public ResponseEntity<?> deleteVacancy(@PathVariable Long vacancyId, Authentication authentication) {
-        Optional<UserEntity> userOpt = userService.getUser(authentication);
-        if (userOpt.isEmpty()) {
-            throw new UnauthenticatedUser("Usuário não autenticado");
-        }
-        UserEntity user = userOpt.get();
-
-        Optional<VacancyEntity> vacancyById = vacancyService.getVacancyById(vacancyId);
-
-        if (vacancyById.isEmpty()) {
-            throw new NotFoundException("Vacancy não encontrada");
-        }
-
-        Optional<UserVacancyEntity> userAndVacancyRelation = userVacancyService.findByUserAndVacancy(user, vacancyById.get());
-
-        if (userAndVacancyRelation.isEmpty()) {
-            throw new UserCannotAccessOrDoThat("Usuario não tem autorização para excluir essa vaga");
-        }
-
-        vacancyService.deleteVacancyById(vacancyId);
+        this.vacancyService.deleteVacancyById(authentication, vacancyId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 

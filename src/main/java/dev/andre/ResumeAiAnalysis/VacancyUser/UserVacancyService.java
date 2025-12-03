@@ -1,8 +1,13 @@
 package dev.andre.ResumeAiAnalysis.VacancyUser;
 
 
+import dev.andre.ResumeAiAnalysis.Auth.Exceptions.UnauthenticatedUser;
 import dev.andre.ResumeAiAnalysis.User.UserEntity;
+import dev.andre.ResumeAiAnalysis.User.UserService;
+import dev.andre.ResumeAiAnalysis.Vacancy.Dtos.UserVacancyRelationDto;
+import dev.andre.ResumeAiAnalysis.Vacancy.Mapper.VacancyMapper;
 import dev.andre.ResumeAiAnalysis.Vacancy.VacancyEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -11,8 +16,10 @@ import java.util.Optional;
 @Service
 public class UserVacancyService {
     final private UserVacancyRepository userVacancyRepository;
-    public UserVacancyService(UserVacancyRepository userVacancyRepository){
+    final private UserService userService;
+    public UserVacancyService(UserVacancyRepository userVacancyRepository,  UserService userService) {
         this.userVacancyRepository = userVacancyRepository;
+        this.userService = userService;
     }
 
     public Optional<UserVacancyEntity> findById(Long userVacancyId){
@@ -23,8 +30,17 @@ public class UserVacancyService {
         return userVacancyRepository.save(entity);
     }
 
-    public List<UserVacancyEntity> findByUser(UserEntity email){
-        return userVacancyRepository.findByUser(email);
+    public List<UserVacancyEntity> findByUser(Authentication authentication) {
+        Optional<UserEntity> userOpt = userService.getUser(authentication);
+
+        if (userOpt.isEmpty()) {
+            throw new UnauthenticatedUser("Usuário não autenticado");
+        }
+
+        UserEntity user = userOpt.get();
+
+        return userVacancyRepository.findByUser(user);
+
     }
 
     public boolean existUserVacancyRelation (UserEntity user, VacancyEntity vacancy){
