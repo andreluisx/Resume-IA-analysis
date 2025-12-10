@@ -13,11 +13,14 @@ import dev.andre.ResumeAiAnalysis.ImplementationAi.AiService;
 import dev.andre.ResumeAiAnalysis.User.UserEntity;
 import dev.andre.ResumeAiAnalysis.User.UserService;
 import dev.andre.ResumeAiAnalysis.Vacancy.Dtos.VacancyRequestDto;
+import dev.andre.ResumeAiAnalysis.Vacancy.Dtos.VacancyResponseDto;
 import dev.andre.ResumeAiAnalysis.Vacancy.Exceptions.*;
 import dev.andre.ResumeAiAnalysis.Vacancy.Mapper.VacancyMapper;
 import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyEntity;
 import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyService;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,7 +31,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -81,8 +83,8 @@ public class VacancyService {
         return savedVacancy;
     }
 
-    public List<VacancyEntity> getAllVacancies() {
-        return vacancyRepository.findAll();
+    public Page<VacancyResponseDto> getAllVacancies(Pageable pageable) {
+        return vacancyRepository.findAll(pageable).map(VacancyMapper::toVacancyResponse);
     }
 
     public Optional<VacancyEntity> getVacancyById(Long id) {

@@ -5,6 +5,8 @@ import dev.andre.ResumeAiAnalysis.Auth.Exceptions.UnauthenticatedUser;
 import dev.andre.ResumeAiAnalysis.User.UserEntity;
 import dev.andre.ResumeAiAnalysis.User.UserService;
 import dev.andre.ResumeAiAnalysis.Vacancy.VacancyEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +30,7 @@ public class UserVacancyService {
         return userVacancyRepository.save(entity);
     }
 
-    public List<UserVacancyEntity> findByUser(Authentication authentication) {
+    public Page<UserVacancyEntity> findByUser(Authentication authentication, Pageable pageable) {
         Optional<UserEntity> userOpt = userService.getUser(authentication);
 
         if (userOpt.isEmpty()) {
@@ -37,7 +39,7 @@ public class UserVacancyService {
 
         UserEntity user = userOpt.get();
 
-        return userVacancyRepository.findByUser(user);
+        return userVacancyRepository.findByUser(user, pageable);
 
     }
 

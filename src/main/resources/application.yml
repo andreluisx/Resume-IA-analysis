@@ -18,10 +18,19 @@ spring:
   flyway:
     enabled: true
 
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
 
   mvc:
     problemdetails:
       enabled: false
+
+queue:
+  name: teste
 
 jwt:
   secret: ${SECRET_KEY:default_secret}

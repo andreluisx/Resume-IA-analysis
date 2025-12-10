@@ -1,6 +1,8 @@
 package dev.andre.ResumeAiAnalysis.VacancyUser;
 import dev.andre.ResumeAiAnalysis.User.UserEntity;
 import dev.andre.ResumeAiAnalysis.Vacancy.VacancyEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,7 +12,7 @@ import java.util.Optional;
 
 public interface UserVacancyRepository extends JpaRepository<UserVacancyEntity, Long> {
 
-    List<UserVacancyEntity> findByUser(UserEntity user);
+    Page<UserVacancyEntity> findByUser(UserEntity user, Pageable pageable);
 
     // Busca todas as vagas que um usuário está relacionado (qualquer role)
     @Query("SELECT uv FROM UserVacancyEntity uv JOIN FETCH uv.vacancy WHERE uv.user.id = :userId")
