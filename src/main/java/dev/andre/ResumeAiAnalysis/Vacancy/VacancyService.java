@@ -7,9 +7,8 @@ import dev.andre.ResumeAiAnalysis.Enums.ApplicationStatus;
 import dev.andre.ResumeAiAnalysis.Enums.VacancyRole;
 import dev.andre.ResumeAiAnalysis.ExceptionHandler.InternalServerError;
 import dev.andre.ResumeAiAnalysis.ExceptionHandler.NotFoundException;
-import dev.andre.ResumeAiAnalysis.ImplementationAi.AIEntity;
-import dev.andre.ResumeAiAnalysis.ImplementationAi.AiRepository;
-import dev.andre.ResumeAiAnalysis.ImplementationAi.AiService;
+import dev.andre.ResumeAiAnalysis.RabbitMQ.Dto.ProcessApplicationMessage;
+import dev.andre.ResumeAiAnalysis.RabbitMQ.QueueSender;
 import dev.andre.ResumeAiAnalysis.User.UserEntity;
 import dev.andre.ResumeAiAnalysis.User.UserService;
 import dev.andre.ResumeAiAnalysis.Vacancy.Dtos.VacancyRequestDto;
@@ -23,6 +22,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -40,17 +41,15 @@ public class VacancyService {
     final private UserVacancyService userVacancyService;
     final private UserService userService;
     final private ApplicationService applicationService;
-    final private AiService implementationAiService;
-    final private AiRepository aiRepository;
     final private VacancyRepository vacancyRepository;
+    final private QueueSender queueSender;
 
-    public VacancyService(AiService implementationAiService, UserService userService, UserVacancyService userVacancyService, ApplicationService applicationService, AiRepository aiRepository, VacancyRepository vacancyRepository) {
+    public VacancyService(UserService userService, UserVacancyService userVacancyService, ApplicationService applicationService, QueueSender queueSender, VacancyRepository vacancyRepository) {
         this.userService = userService;
         this.userVacancyService = userVacancyService;
         this.applicationService = applicationService;
-        this.implementationAiService = implementationAiService;
-        this.aiRepository = aiRepository;
         this.vacancyRepository = vacancyRepository;
+        this.queueSender = queueSender;
     }
 
     public VacancyEntity createVacancy(VacancyRequestDto vacancyRequestDto, Authentication authentication) {
@@ -73,7 +72,7 @@ public class VacancyService {
         UserVacancyEntity userVacancy = UserVacancyEntity.builder()
                 .user(user)
                 .vacancy(savedVacancy)
-                .status(ApplicationStatus.APPROVED)
+                .status(ApplicationStatus.CREATED)
                 .role(VacancyRole.RECRUITER)
                 .build();
 
@@ -174,21 +173,13 @@ public class VacancyService {
             throw new InvalidFileTypeException("Apenas arquivos PDF são aceitos");
         }
 
-        if (file.getSize() > 5 * 1024 * 1024) { // 5MB
+        if (file.getSize() > 5 * 1024 * 1024) {
             throw new FileTooLargeException("Arquivo excede o limite de 5MB");
         }
 
         // ----- Validação da vaga -----
-        Optional<VacancyEntity> vacancyOpt = this.getVacancyById(vacancyId);
-        if (vacancyOpt.isEmpty()) {
-            throw new NotFoundException("Vaga não Encontrada");
-        }
-        VacancyEntity vacancy = vacancyOpt.get();
-
-        // ----- Verifica se já está aplicada -----
-        if (userVacancyService.existUserVacancyRelation(user, vacancy)) {
-            throw new ConflictException("Usuário já aplicou a essa vaga");
-        }
+        VacancyEntity vacancy = this.getVacancyById(vacancyId)
+                .orElseThrow(() -> new NotFoundException("Vaga não Encontrada"));
 
         // ----- Salvar arquivo fisicamente -----
         String uploadDir = "uploads/applications/";
@@ -199,9 +190,7 @@ public class VacancyService {
             Files.createDirectories(Paths.get(uploadDir));
 
             String original = Paths.get(file.getOriginalFilename()).getFileName().toString();
-            String ext = original.contains(".")
-                    ? original.substring(original.lastIndexOf('.'))
-                    : "";
+            String ext = original.contains(".") ? original.substring(original.lastIndexOf(".")) : "";
 
             savedName = UUID.randomUUID().toString() + ext;
             target = Paths.get(uploadDir).resolve(savedName);
@@ -211,45 +200,50 @@ public class VacancyService {
             }
 
         } catch (IOException e) {
-            throw new InternalServerError("Erro ao salvar arquivo: " + e);
+            throw new InternalServerError("Erro ao salvar arquivo: " + e.getMessage());
         }
 
         // ----- Criar relação User-Vacancy -----
+        UserVacancyEntity userVacancy = userVacancyService.save(
+                UserVacancyEntity.builder()
+                        .vacancy(vacancy)
+                        .user(user)
+                        .role(VacancyRole.APPLICANT)
+                        .status(ApplicationStatus.PENDING)
+                        .build()
+        );
 
-        UserVacancyEntity userVacancy = UserVacancyEntity.builder()
-                .vacancy(vacancy)
-                .user(user)
-                .role(VacancyRole.APPLICANT)
-                .status(ApplicationStatus.PENDING)
-                .build();
-        userVacancyService.save(userVacancy);
+        ProcessApplicationMessage message = new ProcessApplicationMessage(
+                VacancyMapper.toVacancyToAi(vacancy),
+                userVacancy.getId(),
+                target.toAbsolutePath().toString()
+        );
 
-        // ----- Processar o arquivo AI -----
-        try {
-            AIEntity aiEntity = implementationAiService.gerarTextoComPdf(file, vacancy, userVacancy);
-            aiRepository.save(aiEntity);
-        } catch (Exception e) {
-            userVacancyService.deleteById(userVacancy.getId());
-            throw new InternalServerError("Erro ao processar o arquivo com IA: " + e.getMessage());
-        }
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        queueSender.send(message);
+                    }
+                }
+        );
 
-        // ----- Salvar metadados do arquivo -----
-        ApplicationEntity attachment = ApplicationEntity.builder()
-                .originalName(file.getOriginalFilename())
-                .filename(savedName)
-                .contentType(file.getContentType())
-                .size(file.getSize())
-                .path(target.toString())
-                .userVacancy(userVacancy)
-                .build();
-        applicationService.save(attachment);
+        // ----- Salvar metadados -----
+        applicationService.save(
+                ApplicationEntity.builder()
+                        .originalName(file.getOriginalFilename())
+                        .filename(savedName)
+                        .contentType(file.getContentType())
+                        .size(file.getSize())
+                        .path(target.toString())  // << salvo no BD
+                        .userVacancy(userVacancy)
+                        .build()
+        );
 
-        // ----- Incrementar contador -----
-        this.incrementApplications(vacancyId);
+        // Incrementar contador
+        incrementApplications(vacancyId);
 
-        // ----- Retornar vaga atualizada -----
-        VacancyEntity updatedVacancy = this.getVacancyById(vacancyId).get();
-
-        return updatedVacancy;
+        return this.getVacancyById(vacancyId).get();
     }
+
 }

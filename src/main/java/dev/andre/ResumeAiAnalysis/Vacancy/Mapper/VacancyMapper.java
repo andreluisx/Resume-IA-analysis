@@ -8,6 +8,9 @@ import dev.andre.ResumeAiAnalysis.Vacancy.VacancyEntity;
 import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyEntity;
 import lombok.experimental.UtilityClass;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @UtilityClass
 public class VacancyMapper {
 
@@ -36,13 +39,24 @@ public class VacancyMapper {
     }
 
     public VacancyToAi toVacancyToAi(VacancyEntity vacancyEntity) {
+
+        // FORÇA CARREGAMENTO — evita LazyInitializationException
+        List<String> essential = vacancyEntity.getEssential() != null
+                ? new ArrayList<>(vacancyEntity.getEssential())
+                : List.of();
+
+        List<String> differential = vacancyEntity.getDifferential() != null
+                ? new ArrayList<>(vacancyEntity.getDifferential())
+                : List.of();
+
         return VacancyToAi.builder()
                 .title(vacancyEntity.getTitle())
                 .description(vacancyEntity.getDescription())
-                .essential(vacancyEntity.getEssential())
-                .differential(vacancyEntity.getDifferential())
+                .essential(essential)
+                .differential(differential)
                 .build();
     }
+
 
     public UserVacancyRelationDto toRelationResponse(UserVacancyEntity relation) {
         VacancyEntity v = relation.getVacancy();

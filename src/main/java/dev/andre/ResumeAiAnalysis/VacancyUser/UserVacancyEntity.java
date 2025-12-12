@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@ToString(exclude = {"user", "vacancy"})
 @Entity
 @Table(name = "user_vacancies")
 @Data

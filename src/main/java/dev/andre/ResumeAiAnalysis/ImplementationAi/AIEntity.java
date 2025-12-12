@@ -5,10 +5,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import dev.andre.ResumeAiAnalysis.ImplementationAi.Enums.Status;
 import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -21,6 +18,7 @@ import java.util.List;
 @Table(name="ai_response")
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString(exclude = {"userVacancy"})
 public class AIEntity {
 
     @Id

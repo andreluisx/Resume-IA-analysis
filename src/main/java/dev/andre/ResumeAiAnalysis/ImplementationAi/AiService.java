@@ -1,30 +1,26 @@
 package dev.andre.ResumeAiAnalysis.ImplementationAi;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.Client;
 import com.google.genai.types.*;
-
 import dev.andre.ResumeAiAnalysis.Auth.Exceptions.UnauthenticatedUser;
 import dev.andre.ResumeAiAnalysis.Enums.VacancyRole;
 import dev.andre.ResumeAiAnalysis.ExceptionHandler.NotFoundException;
-import dev.andre.ResumeAiAnalysis.ImplementationAi.Enums.Status;
 import dev.andre.ResumeAiAnalysis.ImplementationAi.Exceptions.AiProcessingException;
 import dev.andre.ResumeAiAnalysis.ImplementationAi.Exceptions.PdfProcessingException;
+import dev.andre.ResumeAiAnalysis.ImplementationAi.Responses.VacancyToAi;
 import dev.andre.ResumeAiAnalysis.User.UserEntity;
 import dev.andre.ResumeAiAnalysis.User.UserService;
 import dev.andre.ResumeAiAnalysis.Vacancy.Exceptions.UserCannotAccessOrDoThat;
-import dev.andre.ResumeAiAnalysis.Vacancy.Mapper.VacancyMapper;
-import dev.andre.ResumeAiAnalysis.Vacancy.VacancyEntity;
 import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyEntity;
 import dev.andre.ResumeAiAnalysis.VacancyUser.UserVacancyService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.Base64;
+import java.io.File;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,21 +37,30 @@ public class AiService {
         this.userVacancyService = userVacancyService;
     }
 
+    public AIEntity save(AIEntity aiEntity) {
+        return aiRepository.save(aiEntity);
+    }
+
     private String googleApiKey = System.getenv("GOOGLE_API_KEY");
     private ObjectMapper objectMapper = new ObjectMapper();
     Client client = Client.builder().apiKey(googleApiKey).build();
+
     /**
      * Analisa um currículo em PDF em relação a uma vaga
      *
      * @param pdfFile Arquivo PDF do currículo
      * @return AIEntity com a análise
      */
-    public AIEntity gerarTextoComPdf(MultipartFile pdfFile, VacancyEntity vacancy, UserVacancyEntity userVacancyEntity) {
+    public AIEntity gerarTextoComPdf(
+            File pdfFile,
+            VacancyToAi vacancy,
+            UserVacancyEntity userVacancyEntity
+    ) {
         try {
             // ====== 1. Leitura do PDF ======
             byte[] fileBytes;
             try {
-                fileBytes = pdfFile.getBytes();
+                fileBytes = Files.readAllBytes(pdfFile.toPath());
             } catch (IOException e) {
                 throw new PdfProcessingException("Falha ao ler bytes do arquivo PDF", e);
             }
@@ -75,7 +80,7 @@ public class AiService {
             // ====== 3. Serializar vaga ======
             String vacancyJson;
             try {
-                vacancyJson = objectMapper.writeValueAsString(VacancyMapper.toVacancyToAi(vacancy));
+                vacancyJson = objectMapper.writeValueAsString(vacancy);
             } catch (Exception e) {
                 throw new AiProcessingException("Erro ao converter vaga em JSON", e);
             }
@@ -124,18 +129,19 @@ public class AiService {
                     .build();
 
         } catch (PdfProcessingException | AiProcessingException e) {
-            // log detalhado
             System.err.println("Erro ao processar arquivo com IA: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("Erro ao processar arquivo com IA: " + e.getMessage(), e);
+
         } catch (Exception e) {
-            // fallback genérico
             System.err.println("Erro inesperado no processamento de IA: " + e.getMessage());
             e.printStackTrace();
             throw new RuntimeException("Erro inesperado no processamento de IA", e);
         }
     }
-    public AIEntity getOneById(Long AiResponseId, Authentication authentication){
+
+
+    public AIEntity getOneById(Long AiResponseId, Authentication authentication) {
 
         // ==== 1. Autenticação ====
         Optional<UserEntity> userOpt = userService.getUser(authentication);
@@ -206,7 +212,6 @@ public class AiService {
         } catch (IOException e) {
             throw new RuntimeException("Erro ao ler arquivo PDF", e);
         }
-
 
 
     }
