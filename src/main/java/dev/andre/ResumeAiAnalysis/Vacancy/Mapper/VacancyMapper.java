@@ -61,8 +61,10 @@ public class VacancyMapper {
     public UserVacancyRelationDto toRelationResponse(UserVacancyEntity relation) {
         VacancyEntity v = relation.getVacancy();
 
+
         return UserVacancyRelationDto.builder()
-                .id(v.getId())
+                .id(relation.getId())
+                .vacancyId(v.getId())
                 .title(v.getTitle())
                 .description(v.getDescription())
                 .essential(v.getEssential())

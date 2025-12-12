@@ -10,6 +10,7 @@ import java.util.List;
 @Builder
 public record UserVacancyRelationDto(
         Long id,
+        Long vacancyId,
         String title,
         String description,
         List<String> essential,
