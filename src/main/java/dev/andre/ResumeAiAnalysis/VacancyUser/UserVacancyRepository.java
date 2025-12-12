@@ -28,7 +28,7 @@ public interface UserVacancyRepository extends JpaRepository<UserVacancyEntity, 
 
     boolean existsByUserAndVacancy(UserEntity user, VacancyEntity vacancy);
 
-    Optional<UserVacancyEntity> findByUserAndVacancy(UserEntity user, VacancyEntity vacancy);
+    Optional<List<UserVacancyEntity>> findByUserAndVacancy(UserEntity user, VacancyEntity vacancy);
 
     // filtrar por role específica
     @Query("SELECT uv FROM UserVacancyEntity uv JOIN FETCH uv.vacancy WHERE uv.user.id = :userId AND uv.role = :role")

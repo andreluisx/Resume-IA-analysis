@@ -47,7 +47,7 @@ public class UserVacancyService {
         return userVacancyRepository.existsByUserAndVacancy(user, vacancy);
     }
 
-    public Optional<UserVacancyEntity> findByUserAndVacancy(UserEntity user, VacancyEntity vacancy) {
+    public Optional<List<UserVacancyEntity>> findByUserAndVacancy(UserEntity user, VacancyEntity vacancy) {
         return userVacancyRepository.findByUserAndVacancy(user, vacancy);
     }
 

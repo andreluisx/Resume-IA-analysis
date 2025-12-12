@@ -7,6 +7,7 @@ import dev.andre.ResumeAiAnalysis.Enums.ApplicationStatus;
 import dev.andre.ResumeAiAnalysis.Enums.VacancyRole;
 import dev.andre.ResumeAiAnalysis.ExceptionHandler.InternalServerError;
 import dev.andre.ResumeAiAnalysis.ExceptionHandler.NotFoundException;
+import dev.andre.ResumeAiAnalysis.ImplementationAi.AiService;
 import dev.andre.ResumeAiAnalysis.RabbitMQ.Dto.ProcessApplicationMessage;
 import dev.andre.ResumeAiAnalysis.RabbitMQ.QueueSender;
 import dev.andre.ResumeAiAnalysis.User.UserEntity;
@@ -32,6 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -43,13 +45,15 @@ public class VacancyService {
     final private ApplicationService applicationService;
     final private VacancyRepository vacancyRepository;
     final private QueueSender queueSender;
+    final private AiService aiService;
 
-    public VacancyService(UserService userService, UserVacancyService userVacancyService, ApplicationService applicationService, QueueSender queueSender, VacancyRepository vacancyRepository) {
+    public VacancyService(AiService aiService, UserService userService, UserVacancyService userVacancyService, ApplicationService applicationService, QueueSender queueSender, VacancyRepository vacancyRepository) {
         this.userService = userService;
         this.userVacancyService = userVacancyService;
         this.applicationService = applicationService;
         this.vacancyRepository = vacancyRepository;
         this.queueSender = queueSender;
+        this.aiService = aiService;
     }
 
     public VacancyEntity createVacancy(VacancyRequestDto vacancyRequestDto, Authentication authentication) {
@@ -111,11 +115,18 @@ public class VacancyService {
 
         VacancyEntity vacancy = vacancyById.get();
 
-        Optional<UserVacancyEntity> userVacancyRelation = userVacancyService.findByUserAndVacancy(user, vacancyById.get());
+        Optional<List<UserVacancyEntity>> userVacancyRelation = userVacancyService.findByUserAndVacancy(user, vacancyById.get());
 
-        if (userVacancyRelation.isEmpty() || userVacancyRelation.get().getRole() == VacancyRole.APPLICANT) {
-            throw new UserCannotAccessOrDoThat("Usuario não tem autorização para editar essa vaga");
+        if(userVacancyRelation.isEmpty()) {
+            throw new UserCannotAccessOrDoThat("Usuario não tem relação com essa vaga");
         }
+
+        userVacancyRelation.get().stream().forEach(userVacancyEntity -> {
+            if ( userVacancyEntity.getRole() == VacancyRole.APPLICANT) {
+                throw new UserCannotAccessOrDoThat("Usuario não tem autorização para editar essa vaga");
+            }
+        });
+
 
         if (dto.title() != null) vacancy.setTitle(dto.title());
         if (dto.description() != null) vacancy.setDescription(dto.description());
@@ -138,7 +149,7 @@ public class VacancyService {
             throw new NotFoundException("Vacancy não encontrada");
         }
 
-        Optional<UserVacancyEntity> userAndVacancyRelation = userVacancyService.findByUserAndVacancy(user, vacancyById.get());
+        Optional<List<UserVacancyEntity>> userAndVacancyRelation = userVacancyService.findByUserAndVacancy(user, vacancyById.get());
 
         if (userAndVacancyRelation.isEmpty()) {
             throw new UserCannotAccessOrDoThat("Usuario não tem autorização para excluir essa vaga");
@@ -180,6 +191,14 @@ public class VacancyService {
         // ----- Validação da vaga -----
         VacancyEntity vacancy = this.getVacancyById(vacancyId)
                 .orElseThrow(() -> new NotFoundException("Vaga não Encontrada"));
+
+        Optional<List<UserVacancyEntity>> userVacancyRelations = userVacancyService.findByUserAndVacancy(user, vacancy);
+
+        userVacancyRelations.get().stream().forEach(userVacancyEntity -> {
+            if(userVacancyEntity.getStatus().equals(ApplicationStatus.COMPLETED)){
+                throw new ConflictException("Você ja tem um resultado para esta vaga");
+            }
+        });
 
         // ----- Salvar arquivo fisicamente -----
         String uploadDir = "uploads/applications/";

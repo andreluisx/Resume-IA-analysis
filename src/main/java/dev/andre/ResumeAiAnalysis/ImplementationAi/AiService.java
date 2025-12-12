@@ -164,16 +164,18 @@ public class AiService {
             throw new NotFoundException("Analise da IA pra essa vaga não existe mais");
         }
 
-        Optional<UserVacancyEntity> userVacancyRelationOpt = userVacancyService.findByUserAndVacancy(user, userVacancyOpt.get().getVacancy());
+        Optional<List<UserVacancyEntity>> userVacancyRelationOpt = userVacancyService.findByUserAndVacancy(user, userVacancyOpt.get().getVacancy());
 
         if (userVacancyRelationOpt.isEmpty()) {
             throw new UserCannotAccessOrDoThat("Você não tem relação com essa vaga");
         }
 
-        if (!(user.getId().equals(userVacancyOpt.get().getUser().getId()) || userVacancyRelationOpt.get().getRole().equals(VacancyRole.RECRUITER))) {
-            throw new UserCannotAccessOrDoThat("Você não tem autorização para ver isso");
-        }
-
+        userVacancyRelationOpt.get().forEach(userVacancyEntity -> {
+            if (!(user.getId().equals(userVacancyOpt.get().getUser().getId()) || userVacancyEntity.getRole().equals(VacancyRole.RECRUITER))) {
+                throw new UserCannotAccessOrDoThat("Você não tem autorização para ver isso");
+            }
+        });
+        
         return AiResponse.get();
 
     }
