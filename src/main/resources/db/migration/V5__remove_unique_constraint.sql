@@ -1,0 +1,1 @@
+ALTER TABLE user_vacancies DROP CONSTRAINT IF EXISTS uq_user_vacancy;
