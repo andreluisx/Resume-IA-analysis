@@ -198,6 +198,9 @@ public class VacancyService {
             if(userVacancyEntity.getStatus().equals(ApplicationStatus.COMPLETED)){
                 throw new ConflictException("Você ja tem um resultado para esta vaga");
             }
+            if(userVacancyEntity.getStatus().equals(ApplicationStatus.PENDING)){
+                throw new ConflictException("Você ja tem um resultado pendente para essa vaga, aguarde concluir");
+            }
         });
 
         // ----- Salvar arquivo fisicamente -----
