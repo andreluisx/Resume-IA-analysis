@@ -218,5 +218,17 @@ public class AiService {
 
     }
 
+    public AIEntity aiResponsebyUserVacancy(Long userVacancyId, Authentication authentication) {
+
+        Optional<AIEntity> aiEnity =  aiRepository.findByUserVacancy_Id(userVacancyId);
+
+        if(aiEnity.isEmpty()){
+            throw new NotFoundException("Reposta de IA não encontrada");
+        }
+
+        userVacancyService.getUserVacancyById(userVacancyId, authentication);
+
+        return aiEnity.get();
+    }
 
 }

@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/ai")
 public class AiController {
 
-    private AiService implementationAiService;
+    final private AiService implementationAiService;
 
     public AiController(AiService implementationAiService) {
         this.implementationAiService = implementationAiService;
@@ -21,4 +21,11 @@ public class AiController {
 
         return ResponseEntity.ok(oneById);
     }
+
+    @GetMapping("/AiResponse/{userVacancyId}")
+    public ResponseEntity<AIEntity> getAiResponseByUserVacancyId(@PathVariable Long userVacancyId, Authentication authentication) {
+        AIEntity aiEntity = implementationAiService.aiResponsebyUserVacancy(userVacancyId, authentication);
+        return ResponseEntity.ok(aiEntity);
+    }
+
 }

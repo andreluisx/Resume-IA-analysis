@@ -1,6 +1,7 @@
 package dev.andre.ResumeAiAnalysis.RabbitMQ;
 
 import com.rabbitmq.client.Channel;
+import dev.andre.ResumeAiAnalysis.ExceptionHandler.NotFoundException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
@@ -33,27 +34,19 @@ public class QueueConsumer {
 
         long tag = message.getMessageProperties().getDeliveryTag();
 
-        System.out.println("[CONSUMER] Mensagem recebida: " + msg);
-
         try {
             var userVacancy = userVacancyService.findById(msg.userVacancyId())
-                    .orElseThrow(() -> new RuntimeException("UserVacancy não encontrado"));
+                    .orElseThrow(() -> new NotFoundException("UserVacancy não encontrado"));
 
             File file = new File(msg.filePath());
-            System.out.println("[CONSUMER] Carregando PDF: " + file.getAbsolutePath());
 
             AIEntity aiEntity = aiService.gerarTextoComPdf(file, msg.vacancy(), userVacancy);
-
-            System.out.println("[CONSUMER] AI gerado: " + aiEntity);
 
             aiEntity.setUserVacancy(userVacancy);
             userVacancy.setAiResponse(aiEntity);
 
             userVacancy.setStatus(ApplicationStatus.COMPLETED);
             userVacancyService.save(userVacancy);
-            System.out.println("[CONSUMER] AI salvo no banco");
-
-            System.out.println("[CONSUMER] Status atualizado para APPROVED");
 
             channel.basicAck(tag, false);
 
@@ -67,9 +60,9 @@ public class QueueConsumer {
             }
 
             try {
-                channel.basicNack(tag, false, false); // <- agora compilador aceita
+                channel.basicNack(tag, false, false);
             } catch (IOException ioException) {
-                ioException.printStackTrace(); // log do erro no nack
+                ioException.printStackTrace();
             }
         }
     }

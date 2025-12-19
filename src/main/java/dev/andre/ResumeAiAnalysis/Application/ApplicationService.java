@@ -16,4 +16,7 @@ public class ApplicationService {
     public ApplicationEntity save(ApplicationEntity archive){
         return applicationRepository.save(archive);
     }
+
+
+
 }

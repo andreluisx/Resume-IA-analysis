@@ -3,6 +3,8 @@ package dev.andre.ResumeAiAnalysis.Vacancy;
 import java.util.List;
 import java.util.Optional;
 
+import dev.andre.ResumeAiAnalysis.ImplementationAi.AiResponseDto;
+import dev.andre.ResumeAiAnalysis.VacancyUser.Dto.UserVacancyResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -102,6 +104,12 @@ public class VacancyController {
     public ResponseEntity<?> deleteVacancy(@PathVariable Long vacancyId, Authentication authentication) {
         this.vacancyService.deleteVacancyById(authentication, vacancyId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+    //relação usuario e vaga
+    @GetMapping("/user-vacancy/{userVacancyId}")
+    public ResponseEntity<UserVacancyResponse> vacancyResults(@PathVariable Long userVacancyId, Authentication authentication) {
+        return ResponseEntity.ok(userVacancyService.getUserVacancyById(userVacancyId, authentication));
     }
 
 }

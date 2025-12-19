@@ -24,7 +24,6 @@ spring:
     username: guest
     password: guest
 
-
   mvc:
     problemdetails:
       enabled: false

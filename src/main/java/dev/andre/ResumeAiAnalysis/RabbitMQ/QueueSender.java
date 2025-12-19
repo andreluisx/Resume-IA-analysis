@@ -1,9 +1,10 @@
 package dev.andre.ResumeAiAnalysis.RabbitMQ;
 
-import dev.andre.ResumeAiAnalysis.Config.RabbitMQConfig;
-import dev.andre.ResumeAiAnalysis.RabbitMQ.Dto.ProcessApplicationMessage;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
+
+import dev.andre.ResumeAiAnalysis.Config.RabbitMQConfig;
+import dev.andre.ResumeAiAnalysis.RabbitMQ.Dto.ProcessApplicationMessage;
 
 @Component
 public class QueueSender {
