@@ -51,10 +51,6 @@ public class UserVacancyService {
 
     }
 
-    public boolean existUserVacancyRelation (UserEntity user, VacancyEntity vacancy){
-        return userVacancyRepository.existsByUserAndVacancy(user, vacancy);
-    }
-
     public Optional<List<UserVacancyEntity>> findByUserAndVacancy(UserEntity user, VacancyEntity vacancy) {
         return userVacancyRepository.findOneByUserAndVacancy(user, vacancy);
     }

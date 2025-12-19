@@ -16,8 +16,6 @@ public interface UserVacancyRepository extends JpaRepository<UserVacancyEntity, 
 
     Page<UserVacancyEntity> findByUser(UserEntity user, Pageable pageable);
 
-    boolean existsByUserAndVacancy(UserEntity user, VacancyEntity vacancy);
-
     Optional<List<UserVacancyEntity>> findOneByUserAndVacancy(UserEntity user, VacancyEntity vacancy);
 
 }
